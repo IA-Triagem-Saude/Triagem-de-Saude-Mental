@@ -1,0 +1,972 @@
+<!--
+
+|   |  -------  |\    /|  |
+|   |     |     | \  / |  |
+|---|     |     |  \/  |  |
+|   |     |     |      |  |
+|   |     |     |      |  L_____
+
+Documento HTML principal do módulo de Triagem de Saúde Mental do AppSAU.
+Esta página contém a interface gráfica de uma ferramenta de triagem
+para indícios de ansiedade e depressão, utilizando o mesmo algoritmo
+KNN (K-Nearest Neighbors) já empregado na IA de Triagem de Saúde do AppSAU.
+
+IMPORTANTE: esta ferramenta NÃO realiza diagnóstico. Ela é um
+instrumento educacional de triagem, desenvolvido no âmbito do
+PET Saúde Digital, e deve ser sempre acompanhada de orientação
+profissional. -->
+
+<!DOCTYPE html>
+<html>
+<!-- ............................................. -->
+
+<!-- Cabeçalho da página.
+
+	Contém configurações gerais do documento:
+	- Codificação UTF-8 para caracteres especiais;
+	- Configuração de responsividade para dispositivos móveis;
+	- Título exibido na aba do navegador -->
+<head>
+<!-- ............................................. -->
+
+
+<!-- Charset
+	Permite exibir corretamente acentos e caracteres especiais -->
+
+<meta charset="UTF-8">
+<!-- ............................................. -->
+
+
+<!-- Viewport
+	Configura a adaptação automática da página para celulares e tablets,
+	permitindo que a interface seja responsiva -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- ............................................. -->
+
+
+<!-- Título exibido na aba do navegador -->
+<title>Triagem de Saúde Mental</title>
+<!-- ............................................. -->
+
+
+<!-- Início do CSS
+
+  ___  ___  ___
+ / __ / __ / __|
+
+| (__ \__ \ __ \
+ \___ |___/ ___/
+
+	Folha de estilos (CSS).
+	Reaproveita a mesma estrutura visual do AppSAU original,
+	trocando a cor de destaque para diferenciar o módulo de
+	saúde mental (tom violeta) do módulo de triagem física (azul) -->
+<style>
+
+
+	/* Configuração visual geral da página */
+body {
+  font-family: Arial;
+  background: #eef2f7;
+  text-align: center;
+}
+
+	/* Container principal da aplicação.
+	Cria uma área centralizada onde todos os elementos
+	da triagem serão exibidos */
+.container {
+  background: white;
+  padding: 20px;
+  margin: 10px auto;
+  border-radius: 10px;
+  max-width: 600px;
+}
+
+	/* Rótulo de cada pergunta. Diferente da IA de Triagem em Saúde,
+	aqui usamos <label> de verdade (em vez de só "placeholder"),
+	porque são perguntas de escala psicométrica e precisam
+	ficar visíveis o tempo todo, mesmo depois de respondidas.
+	Isso também melhora a acessibilidade (leitores de tela). */
+.label {
+  display: block;
+  text-align: left;
+  font-size: 13px;
+  margin-bottom: 3px;
+  color: #333;
+}
+
+	/* Texto auxiliar exibido abaixo de alguns campos,
+	fornecendo exemplos ou contexto de preenchimento */
+.ajuda {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #999;
+  font-style: italic;
+}
+
+	/* Agrupa elementos relacionados: pergunta + campo de resposta */
+.campo {
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+	/* Define a aparência dos campos de entrada
+	e das listas de seleção */
+input, select {
+  width: 90%;
+  padding: 8px;
+  margin: 5px;
+}
+
+	/* Botão responsável por iniciar a análise
+	dos dados informados pelo usuário.
+	Cor violeta (#6c5ce7) para diferenciar do módulo físico (azul) */
+button {
+  padding: 10px;
+  width: 95%;
+  background: #6c5ce7;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  margin-top: 8px;
+}
+
+	/* Área onde será exibido o resultado final
+	da classificação realizada pela IA */
+#resultado {
+  margin-top: 10px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+	/* Área destinada à apresentação de observações
+	e orientações complementares ao resultado */
+#explicacao {
+  font-size: 14px;
+}
+
+	/* Caixa de alerta de segurança (crise/autolesão).
+	Fica OCULTA por padrão e só é exibida via JavaScript
+	quando a resposta ao item de rastreio de autolesão
+	indicar qualquer nível de risco. Cor vermelha forte
+	para chamar atenção imediata, independente do
+	resultado da classificação KNN. */
+#alertaCrise {
+  display: none;
+  margin-top: 12px;
+  padding: 14px;
+  background: #fdecea;
+  border: 2px solid #d93025;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 14px;
+  color: #7a0000;
+}
+
+	/* Caixa de apoio fixa, sempre visível, com o número do CVV.
+	Diferente do #alertaCrise (que só aparece se necessário),
+	esta caixa fica sempre no rodapé, como boa prática em
+	qualquer instrumento de triagem de saúde mental. */
+#apoioFixo {
+  margin-top: 15px;
+  padding: 10px;
+  background: #f1f3ff;
+  border: 1px solid #d0d4f5;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 12.5px;
+  color: #333;
+}
+
+.rodape-linha{
+  margin-top:25px;
+  border:none;
+  border-top:1px solid #ddd;
+}
+
+	/* Configurações visuais do rodapé da página */
+.rodape{
+  text-align:center;
+  margin-top:8px;
+}
+
+	/* Define o tamanho da logomarca do AppSAU
+	exibida no rodapé */
+.logo-rodape{
+  width:120px;
+  max-width:70%;
+}
+
+.texto-rodape{
+  font-size:11px;
+  color:#777;
+  margin-top:8px;
+}
+
+	/* Painel destinado à Explainable AI (XAI).
+	Apresenta informações detalhadas sobre o
+	funcionamento da classificação realizada
+	pelo algoritmo KNN */
+#painelIA{
+  margin-top:15px;
+  padding:10px;
+  background:#f8f9fa;
+  border:1px solid #ddd;
+  border-radius:8px;
+}
+
+	/* Área onde serão exibidos os detalhes da análise,
+	incluindo vizinhos mais próximos, distâncias e votação */
+#detalhesIA{
+  font-size:13px;
+  line-height:1.5;
+}
+
+	/* Cabeçalho de cada bloco de perguntas (Depressão / Ansiedade) */
+.bloco-titulo {
+  text-align:left;
+  font-size:15px;
+  font-weight:bold;
+  color:#444;
+  margin-top:18px;
+  margin-bottom:6px;
+  border-left: 4px solid #6c5ce7;
+  padding-left: 8px;
+}
+
+/* Fim da folha de estilos */
+</style>
+
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h3>🧠 Triagem de Saúde Mental</h3>
+
+<p style="font-size:13px; color:#555; text-align:left;">
+Este questionário é um instrumento de <b>triagem</b> (rastreio inicial),
+não um diagnóstico. Os itens abaixo são inspirados em escalas
+validadas na literatura científica (adaptadas em linguagem própria
+para fins educacionais). Responda pensando nas <b>últimas duas semanas</b>.
+</p>
+
+<!-- ================= BLOCO 1: Sintomas depressivos ================= -->
+<!-- Este bloco é inspirado no PHQ-9 (Patient Health Questionnaire-9),
+     um instrumento amplamente validado internacionalmente e no Brasil
+     para rastreio de sintomas depressivos. Ver base teórica completa
+     nos comentários do JavaScript, mais abaixo. -->
+
+<div class="bloco-titulo">📋 Bloco 1 — Sintomas depressivos (últimas 2 semanas)</div>
+
+<div class="campo">
+  <label class="label" for="dep1">1. Pouco interesse ou prazer em fazer as coisas</label>
+  <select id="dep1">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label class="label" for="dep2">2. Sentir-se para baixo, desanimado(a) ou sem esperança</label>
+  <select id="dep2">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label class="label" for="dep3">3. Dificuldade para dormir, ou dormir demais</label>
+  <select id="dep3">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label class="label" for="dep4">4. Sentir-se cansado(a) ou com pouca energia</label>
+  <select id="dep4">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label class="label" for="dep5">5. Falta de apetite ou comer em excesso</label>
+  <select id="dep5">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label class="label" for="dep6">6. Sentir-se mal consigo mesmo(a), ou que decepcionou os outros</label>
+  <select id="dep6">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label class="label" for="dep7">7. Dificuldade de concentração em tarefas (estudo, leitura, TV)</label>
+  <select id="dep7">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label class="label" for="dep8">8. Lentidão ou agitação perceptível para outras pessoas</label>
+  <select id="dep8">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<!-- ITEM CRÍTICO DE SEGURANÇA (item 9 do PHQ-9).
+     Este item NUNCA deve ser tratado apenas como "mais uma variável"
+     do vetor do KNN. Ele é lido separadamente na função classificar()
+     para disparar o alerta de crise, independente do resultado da IA. -->
+<div class="campo">
+  <label class="label" for="dep9">9. Pensamentos de que estaria melhor morto(a), ou de se machucar de alguma forma</label>
+  <select id="dep9">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+  <small class="ajuda">
+    💡 Se você respondeu qualquer opção diferente de "Nunca" aqui,
+    o sistema exibirá informações de apoio imediatamente após a análise.
+  </small>
+</div>
+
+<!-- ================= BLOCO 2: Sintomas de ansiedade ================= -->
+<!-- Este bloco é inspirado no GAD-7 (Generalized Anxiety Disorder-7),
+     instrumento validado para rastreio de sintomas ansiosos. -->
+
+<div class="bloco-titulo">📋 Bloco 2 — Sintomas de ansiedade (últimas 2 semanas)</div>
+
+<div class="campo">
+  <label class="label" for="ans1">1. Sentir-se nervoso(a), ansioso(a) ou no limite</label>
+  <select id="ans1">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label class="label" for="ans2">2. Não conseguir parar ou controlar as preocupações</label>
+  <select id="ans2">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label class="label" for="ans3">3. Preocupar-se demais com diversas coisas</label>
+  <select id="ans3">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label class="label" for="ans4">4. Dificuldade para relaxar</label>
+  <select id="ans4">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label class="label" for="ans5">5. Ficar tão inquieto(a) que fica difícil permanecer parado(a)</label>
+  <select id="ans5">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label class="label" for="ans6">6. Ficar facilmente irritado(a) ou impaciente</label>
+  <select id="ans6">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label class="label" for="ans7">7. Sentir medo, como se algo terrível fosse acontecer</label>
+  <select id="ans7">
+    <option value="">Selecione</option>
+    <option value="0">Nunca</option>
+    <option value="1">Vários dias</option>
+    <option value="2">Mais da metade dos dias</option>
+    <option value="3">Quase todos os dias</option>
+  </select>
+</div>
+
+<!-- ================= BLOCO 3: Contexto (não fazem parte do PHQ-9/GAD-7 originais,
+     mas foram acrescentados para dar contexto ao ambiente universitário) ================= -->
+
+<div class="bloco-titulo">📋 Bloco 3 — Contexto de vida</div>
+
+<div class="campo">
+  <label class="label" for="apoio">Como você avalia sua rede de apoio (família, amigos, colegas)?</label>
+  <select id="apoio">
+    <option value="">Selecione</option>
+    <option value="0">Nenhum apoio percebido</option>
+    <option value="1">Pouco apoio</option>
+    <option value="2">Apoio razoável</option>
+    <option value="3">Bom apoio, sinto que posso contar com alguém</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label class="label" for="sobrecarga">Como está sua carga de estudos/trabalho atualmente?</label>
+  <select id="sobrecarga">
+    <option value="">Selecione</option>
+    <option value="0">Tranquila, bem administrada</option>
+    <option value="1">Moderada</option>
+    <option value="2">Pesada, com dificuldade de dar conta</option>
+    <option value="3">Excessiva, sinto que não consigo acompanhar</option>
+  </select>
+</div>
+
+<!-- Botão responsável por iniciar a análise dos dados
+	informados pelo usuário -->
+<button id="btn">Classificar</button>
+
+
+<!-- Áreas destinadas à apresentação do resultado da classificação
+e das orientações complementares ao usuário -->
+<div id="resultado"></div>
+
+<!-- Caixa de alerta de crise. Fica escondida (display:none no CSS)
+     e só é exibida via JavaScript se necessário. -->
+<div id="alertaCrise"></div>
+
+<div id="explicacao"></div>
+
+
+<!-- Para mostrar os resultados "por trás da análise"
+	Painel de Explainable AI (XAI).
+
+	Exibe informações detalhadas sobre o processo de classificação,
+	incluindo vizinhos mais próximos, distâncias calculadas e votação -->
+
+<details id="painelIA" style="margin-top:15px; text-align:left;">
+  <summary style="cursor:pointer; font-weight:bold;">
+    🔍 Detalhes da classificação (IA)
+  </summary>
+
+  <div id="detalhesIA" style="margin-top:10px;"></div>
+
+</details>
+
+
+<!-- Caixa de apoio SEMPRE visível, independente do resultado.
+     Boa prática em qualquer instrumento de triagem de saúde mental:
+     o contato de crise não deve depender do resultado da IA. -->
+<div id="apoioFixo">
+  <b>💬 Precisa conversar com alguém agora?</b><br>
+  CVV — Centro de Valorização da Vida: ligue <b>188</b> (gratuito, 24h)
+  ou acesse <b>cvv.org.br</b> para chat/e-mail.<br>
+  Você também pode procurar o serviço de psicologia/assistência
+  estudantil da sua instituição de ensino.
+</div>
+
+
+<!-- Código para adicionar o logo do AppSAU no rodapé -->
+
+<hr class="rodape-linha">
+
+<div class="rodape">
+
+  <img src="logo-appsau.png"
+       alt="AppSAU"
+       class="logo-rodape">
+
+  <p class="texto-rodape">
+    AppSAU • Módulo de Triagem de Saúde Mental baseado em Machine Learning (IA)
+  </p>
+
+</div>
+
+</div>
+
+
+<!--
+========================================================
+
+                    APP SAU
+        Módulo de Triagem de Saúde Mental
+
+Sistema de rastreio de indícios de ansiedade e depressão
+Baseado em Machine Learning (KNN)
+Desenvolvido no âmbito do PET Saúde Digital
+
+Versão: Julho
+Ano: 2026
+
+========================================================
+
+	Início da implementação em JavaScript.
+
+	Nesta seção encontram-se:
+	- Base teórica dos instrumentos utilizados;
+	- Base de referência sintética;
+	- Normalização Min-Max;
+	- Distância Euclidiana;
+	- Algoritmo KNN;
+	- Verificação de segurança (risco de autolesão);
+	- Explainable AI (XAI);
+	- Classificação do resultado.
+========================================================
+-->
+<script> 				    /* início */
+
+/*
+	============================================================
+	BASE TEÓRICA — Instrumentos de psicologia utilizados
+	============================================================
+
+	Este módulo se inspira em dois instrumentos amplamente
+	validados na literatura científica internacional e utilizados
+	também em versões adaptadas e validadas para o português
+	do Brasil:
+
+	1) PHQ-9 (Patient Health Questionnaire-9)
+	   Autores originais: Kroenke, Spitzer & Williams (2001).
+	   Rastreia 9 sintomas nucleares de depressão, cada um
+	   pontuado de 0 (nunca) a 3 (quase todos os dias).
+	   Pontuação total: 0 a 27.
+	   Faixas de referência usadas na literatura:
+	     0–4   → sintomas mínimos
+	     5–9   → depressão leve
+	     10–14 → depressão moderada
+	     15–19 → depressão moderadamente grave
+	     20–27 → depressão grave
+	   O item 9 do PHQ-9 original trata especificamente de
+	   pensamentos de morte/autolesão. Por isso, no nosso código,
+	   o item "dep9" é tratado separadamente do restante da soma
+	   para fins de alerta de segurança (ver função classificar()).
+
+	2) GAD-7 (Generalized Anxiety Disorder-7)
+	   Autores originais: Spitzer, Kroenke, Williams & Löwe (2006).
+	   Rastreia 7 sintomas nucleares de ansiedade generalizada,
+	   mesma escala de pontuação (0 a 3 por item).
+	   Pontuação total: 0 a 21.
+	   Faixas de referência usadas na literatura:
+	     0–4   → ansiedade mínima
+	     5–9   → ansiedade leve
+	     10–14 → ansiedade moderada
+	     15–21 → ansiedade grave
+
+	IMPORTANTE — Adaptação didática:
+	Os itens exibidos nesta página foram reescritos em linguagem
+	própria, mantendo o sentido clínico de cada pergunta e a
+	mesma estrutura de resposta (0 a 3), mas NÃO reproduzem o
+	texto literal dos instrumentos originais licenciados.
+	Para uso clínico ou de pesquisa formal, deve-se utilizar a
+	versão oficial validada e traduzida do instrumento, com a
+	devida autorização/licenciamento quando aplicável.
+
+	Referência sobre validação no Brasil (uso geral em serviços
+	de atenção primária e saúde mental):
+	Santos, I.S. et al. (2013). Sensibilidade e especificidade do
+	Patient Health Questionnaire-9 (PHQ-9) entre adultos da
+	população geral. Cadernos de Saúde Pública.
+
+	3) Recursos de apoio em crise (Brasil):
+	   CVV — Centro de Valorização da Vida: 188 (ligação gratuita,
+	   24h) ou cvv.org.br (chat/e-mail). CAPS (Centro de Atenção
+	   Psicossocial) da rede local também é uma porta de entrada
+	   pelo SUS. Serviços de psicologia/assistência estudantil
+	   das instituições de ensino também são recursos válidos.
+
+	============================================================
+*/
+
+
+// ================= BASE de DADOS (sintética) =================
+
+/* Base de referência sintética utilizada pelo algoritmo KNN.
+   Cada linha representa um perfil de referência, na ordem:
+   [Soma Depressão (0-27), Soma Ansiedade (0-21), Apoio Social (0-3), Sobrecarga (0-3)]
+
+   Assim como no módulo de triagem física do AppSAU, esta base
+   é SINTÉTICA e foi construída com finalidade educacional e
+   demonstrativa, com pontuações compatíveis com as faixas de
+   referência da literatura citada acima (PHQ-9 / GAD-7).
+   Ela NÃO substitui avaliação clínica. */
+
+var X = [
+  // --- Perfis SEM indícios significativos (classe 0) ---
+  [2, 1, 3, 0],  // Perfil 0: sintomas mínimos, boa rede de apoio, rotina tranquila
+  [3, 3, 3, 1],  // Perfil 1: sintomas mínimos em ambos, apoio forte
+  [1, 2, 2, 0],  // Perfil 2: quase assintomático, sobrecarga baixa
+  [4, 4, 2, 1],  // Perfil 3: limite superior do "mínimo", ainda estável
+  [0, 1, 3, 0],  // Perfil 4: praticamente sem sintomas
+  [3, 2, 2, 1],  // Perfil 5: sintomas mínimos, sobrecarga moderada
+
+  // --- Perfis com indícios LEVES a MODERADOS (classe 1) ---
+  [8, 7, 2, 2],  // Perfil 6: depressão leve, ansiedade leve, sobrecarga alta
+  [10, 9, 1, 2], // Perfil 7: depressão moderada limítrofe, pouco apoio
+  [7, 11, 2, 1], // Perfil 8: ansiedade moderada, depressão leve
+  [12, 8, 1, 2], // Perfil 9: depressão moderada, ansiedade leve, sobrecarga alta
+  [9, 10, 2, 2], // Perfil 10: quadro leve-moderado combinado
+  [6, 6, 2, 1],  // Perfil 11: sintomas leves em ambas as escalas
+
+  // --- Perfis com indícios SIGNIFICATIVOS (classe 2) ---
+  [19, 16, 0, 3],  // Perfil 12: depressão moderadamente grave, ansiedade grave, sem apoio
+  [22, 18, 1, 3],  // Perfil 13: depressão grave, ansiedade grave, sobrecarga excessiva
+  [16, 15, 0, 2],  // Perfil 14: depressão moderadamente grave, ansiedade grave
+  [24, 14, 0, 3],  // Perfil 15: depressão grave, ansiedade moderada, sem apoio
+  [17, 19, 1, 3],  // Perfil 16: depressão moderadamente grave, ansiedade grave, sobrecarga excessiva
+  [20, 17, 0, 2]   // Perfil 17: depressão grave, ansiedade grave, isolamento social
+];
+
+/* VETOR com a classificação de cada perfil de referência:
+   0 = Sem indícios significativos
+   1 = Indícios leves a moderados
+   2 = Indícios significativos (encaminhamento recomendado) */
+var Y = [
+  0, 0, 0, 0, 0, 0,   // Perfis 0 a 5
+  1, 1, 1, 1, 1, 1,   // Perfis 6 a 11
+  2, 2, 2, 2, 2, 2    // Perfis 12 a 17
+];
+
+/*
+BASE DE REFERÊNCIA
+Os perfis acima são sintéticos e foram construídos com base nas
+faixas de pontuação descritas na literatura científica sobre o
+PHQ-9 e o GAD-7 (ver base teórica no início do script).
+Esta base não substitui validação clínica nem avaliação
+profissional presencial.
+*/
+
+
+// ================= NORMALIZAÇÃO =================
+/* Mesma técnica usada no módulo de triagem física do AppSAU:
+   normalização Min-Max, para colocar todas as variáveis na
+   mesma escala (0 a 1), evitando que a soma da depressão
+   (que vai até 27) tenha peso desproporcional em relação
+   à sobrecarga acadêmica (que vai só até 3).
+
+   Fórmula: x' = (x - xmin) / (xmax - xmin) */
+function normalizar(dados){
+  var linhas = dados.length;
+  var colunas = dados[0].length;
+  var norm = [];
+
+  for(var i=0;i<linhas;i++){
+    norm.push([]);
+  }
+
+  // Para cada coluna (variável), encontra o menor e o maior valor
+  for(var c=0;c<colunas;c++){
+    var min = dados[0][c];
+    var max = dados[0][c];
+
+    for(var i=0;i<linhas;i++){
+      if(dados[i][c] < min) min = dados[i][c];
+      if(dados[i][c] > max) max = dados[i][c];
+    }
+
+    // Aplica a fórmula Min-Max a cada valor da coluna
+    for(var i=0;i<linhas;i++){
+      var valor;
+      if(max - min === 0){
+        // Evita divisão por zero caso todos os valores da coluna sejam iguais
+        valor = 0;
+      } else {
+        valor = (dados[i][c] - min) / (max - min);
+      }
+      norm[i].push(valor);
+    }
+  }
+
+  return norm;
+}
+
+
+// ================= DISTÂNCIA EUCLIDIANA =================
+/* Mede o grau de semelhança entre dois perfis já normalizados.
+   Quanto menor o valor retornado, mais parecidos são os perfis. */
+function distancia(a, b){
+  var soma = 0;
+  for(var i=0;i<a.length;i++){
+    soma += Math.pow(a[i] - b[i], 2);
+  }
+  return Math.sqrt(soma);
+}
+
+
+// ================= Algoritmo de Machine Learning - KNN =================
+/*
+O sistema procura, dentro de sua base de dados, as três pessoas mais
+parecidas com o usuário (K = 3), usando a distância euclidiana sobre
+os dados normalizados (soma de depressão, soma de ansiedade, apoio
+social e sobrecarga acadêmica).
+
+Em seguida, verifica a classificação atribuída a cada um dos 3
+vizinhos mais próximos e decide o resultado final por votação
+majoritária — exatamente como no módulo de triagem física.
+
+IMPORTANTE: o item de rastreio de autolesão (dep9) NÃO entra neste
+cálculo. Ele é tratado à parte, na função classificar(), porque uma
+resposta positiva ali exige ação imediata, independente de qualquer
+votação estatística.
+*/
+
+function classificar(){
+
+  // ---------- Coleta dos itens do Bloco 1 (Depressão) ----------
+  var dep1 = document.getElementById("dep1").value;
+  var dep2 = document.getElementById("dep2").value;
+  var dep3 = document.getElementById("dep3").value;
+  var dep4 = document.getElementById("dep4").value;
+  var dep5 = document.getElementById("dep5").value;
+  var dep6 = document.getElementById("dep6").value;
+  var dep7 = document.getElementById("dep7").value;
+  var dep8 = document.getElementById("dep8").value;
+  var dep9 = document.getElementById("dep9").value; // item crítico de segurança
+
+  // ---------- Coleta dos itens do Bloco 2 (Ansiedade) ----------
+  var ans1 = document.getElementById("ans1").value;
+  var ans2 = document.getElementById("ans2").value;
+  var ans3 = document.getElementById("ans3").value;
+  var ans4 = document.getElementById("ans4").value;
+  var ans5 = document.getElementById("ans5").value;
+  var ans6 = document.getElementById("ans6").value;
+  var ans7 = document.getElementById("ans7").value;
+
+  // ---------- Coleta dos itens do Bloco 3 (Contexto) ----------
+  var apoio = document.getElementById("apoio").value;
+  var sobrecarga = document.getElementById("sobrecarga").value;
+
+  // Lista com todos os campos, para validar se algum ficou vazio
+  var campos = [dep1,dep2,dep3,dep4,dep5,dep6,dep7,dep8,dep9,
+                ans1,ans2,ans3,ans4,ans5,ans6,ans7,apoio,sobrecarga];
+
+  for(var i=0;i<campos.length;i++){
+    if(campos[i] === ""){
+      alert("Por favor, responda todas as perguntas antes de continuar.");
+      return;
+    }
+  }
+
+  // Converte todos os campos de string para número
+  dep1=Number(dep1); dep2=Number(dep2); dep3=Number(dep3);
+  dep4=Number(dep4); dep5=Number(dep5); dep6=Number(dep6);
+  dep7=Number(dep7); dep8=Number(dep8); dep9=Number(dep9);
+  ans1=Number(ans1); ans2=Number(ans2); ans3=Number(ans3);
+  ans4=Number(ans4); ans5=Number(ans5); ans6=Number(ans6); ans7=Number(ans7);
+  apoio=Number(apoio); sobrecarga=Number(sobrecarga);
+
+
+  /* ================= VERIFICAÇÃO DE SEGURANÇA (PRIORITÁRIA) =================
+     Este bloco roda ANTES de qualquer cálculo estatístico do KNN.
+     Se o item 9 (pensamentos de autolesão/morte) tiver qualquer
+     pontuação acima de zero, o alerta de crise é exibido
+     imediatamente, independentemente do resultado da classificação.
+     Isso segue a boa prática recomendada para instrumentos de
+     triagem de saúde mental (o rastreio de risco de suicídio nunca
+     deve depender de um cálculo estatístico de similaridade). */
+  var alertaCrise = document.getElementById("alertaCrise");
+
+  if(dep9 > 0){
+    alertaCrise.style.display = "block";
+    alertaCrise.innerHTML =
+      "<b>⚠️ Atenção</b><br>" +
+      "Você indicou ter tido pensamentos de autolesão ou de que estaria " +
+      "melhor morto(a). Isso merece cuidado e atenção imediata.<br><br>" +
+      "<b>CVV — Centro de Valorização da Vida:</b> ligue <b>188</b> " +
+      "(gratuito, 24 horas) ou acesse <b>cvv.org.br</b> para conversar por " +
+      "chat ou e-mail.<br>" +
+      "Procure também o serviço de psicologia ou assistência estudantil " +
+      "da sua instituição, ou um serviço de saúde/emergência mais próximo.<br><br>" +
+      "Você não precisa passar por isso sozinho(a).";
+  } else {
+    alertaCrise.style.display = "none";
+    alertaCrise.innerHTML = "";
+  }
+
+
+  // ---------- Cálculo das pontuações somadas ----------
+  // Soma total de depressão inclui o item 9 (fiel ao PHQ-9 original,
+  // cuja pontuação total vai de 0 a 27), mas o alerta de crise acima
+  // já foi tratado separadamente, então não há conflito.
+  var somaDepressao = dep1+dep2+dep3+dep4+dep5+dep6+dep7+dep8+dep9;
+  var somaAnsiedade = ans1+ans2+ans3+ans4+ans5+ans6+ans7;
+
+  // Vetor com os dados do indivíduo, na mesma ordem da base X
+  var novo = [somaDepressao, somaAnsiedade, apoio, sobrecarga];
+
+  // Cria uma cópia da base de referência e adiciona o novo indivíduo
+  var dados = X.slice();
+  dados.push(novo);
+
+  // Normaliza todos os dados (base + novo indivíduo) para a escala 0-1
+  var norm = normalizar(dados);
+
+  // Recupera o indivíduo recém-inserido já normalizado
+  var novo_n = norm[norm.length - 1];
+
+  // Remove o indivíduo da base normalizada, mantendo só os perfis de referência
+  norm.pop();
+
+  // Vetor que armazenará as distâncias calculadas
+  var dist = [];
+
+  // Calcula a distância entre o novo indivíduo e cada perfil de referência
+  for(var i=0;i<norm.length;i++){
+    dist.push({
+      id: i,
+      d: distancia(novo_n, norm[i]),
+      c: Y[i]
+    });
+  }
+
+  // Ordena as distâncias da menor para a maior (mais parecido primeiro)
+  dist.sort(function(a,b){ return a.d - b.d; });
+
+  /* .... EXPLICABILIDADE DA IA (XAI) ....
+     Mesma lógica do módulo de IA Triagem de Saúde: mostramos os 3
+     vizinhos mais próximos, suas distâncias e suas classificações,
+     para que o resultado não seja uma "caixa-preta". */
+  var classeTxt = [
+    "Sem indícios significativos",
+    "Indícios leves a moderados",
+    "Indícios significativos"
+  ];
+
+  var detalhesIA =
+    "<b>🔍 Explainable AI (XAI) – Inteligência Artificial Explicável</b><br><br>" +
+    "Este módulo também incorpora princípios de XAI: você pode ver abaixo " +
+    "os perfis de referência mais semelhantes ao seu, as distâncias " +
+    "calculadas e como a votação chegou ao resultado.<br><br>" +
+    "<b>Perfis mais semelhantes encontrados:</b><br><br>";
+
+  // K = 3: seleciona os 3 vizinhos mais próximos
+  for(var i=0;i<3;i++){
+    var perfil = X[dist[i].id];
+
+    detalhesIA +=
+      "<b>" + (i+1) + "º vizinho mais próximo</b><br>" +
+      "Perfil de referência: " + dist[i].id + "<br>" +
+      "Soma Depressão: " + perfil[0] + " (0-27)<br>" +
+      "Soma Ansiedade: " + perfil[1] + " (0-21)<br>" +
+      "Apoio Social: " + perfil[2] + " (0-3)<br>" +
+      "Sobrecarga: " + perfil[3] + " (0-3)<br>" +
+      "Distância: " + dist[i].d.toFixed(3) + "<br>" +
+      "Classificação: " + classeTxt[dist[i].c] +
+      "<br><br>";
+  }
+
+  // Vetor de votação das classes [Sem indícios, Leve/Moderado, Significativo]
+  var votos = [0,0,0];
+  for(var i=0;i<3;i++){
+    votos[dist[i].c]++;
+  }
+
+  detalhesIA +=
+    "<b>Resultado da votação:</b><br>" +
+    "Sem indícios significativos: " + votos[0] + " voto(s)<br>" +
+    "Indícios leves a moderados: " + votos[1] + " voto(s)<br>" +
+    "Indícios significativos: " + votos[2] + " voto(s)<br><br>";
+
+  detalhesIA +=
+    "<b>Como a IA tomou a decisão?</b><br>" +
+    "O sistema procurou os 3 perfis de referência mais semelhantes ao seu, " +
+    "usando distância euclidiana sobre os dados normalizados. Em seguida, " +
+    "verificou a classificação desses perfis e aplicou votação majoritária. " +
+    "A classe mais votada foi usada como resultado final.<br><br>" +
+    "<b>Importante:</b> em caso de empate entre as três classes (um voto " +
+    "para cada), o sistema não deve assumir silenciosamente o resultado " +
+    "mais brando. Nesta versão, empates completos são tratados como " +
+    "'Indícios leves a moderados', por precaução — nunca como 'Sem indícios'.";
+
+  // Define a classe final, com tratamento explícito de empate
+  var classe;
+  if(votos[0] === 1 && votos[1] === 1 && votos[2] === 1){
+    // Empate total: por segurança, não assume "sem indícios"
+    classe = 1;
+  } else {
+    classe = 0;
+    if(votos[1] > votos[classe]) classe = 1;
+    if(votos[2] > votos[classe]) classe = 2;
+  }
+
+  var textos = ["Sem indícios significativos","Indícios leves a moderados","Indícios significativos"];
+  var cores = ["green","#b8860b","red"];
+
+  document.getElementById("resultado").innerHTML = textos[classe];
+  document.getElementById("resultado").style.color = cores[classe];
+
+  document.getElementById("explicacao").innerHTML =
+    "Soma Depressão: " + somaDepressao + "/27 &nbsp;|&nbsp; " +
+    "Soma Ansiedade: " + somaAnsiedade + "/21<br>" +
+    "Esta análise utiliza Inteligência Artificial (Machine Learning) com " +
+    "base em perfis semelhantes, e não substitui avaliação profissional.<br>" +
+    "Para uma avaliação completa, procure um psicólogo(a) ou psiquiatra.";
+
+  document.getElementById("detalhesIA").innerHTML = detalhesIA;
+}
+
+// ================= EVENTO (CRÍTICO) =================
+document.addEventListener("DOMContentLoaded", function(){
+  document.getElementById("btn").onclick = classificar;
+});
+
+</script>
+
+</body>
+</html>
